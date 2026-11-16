@@ -19,6 +19,7 @@ From the repository directory, create the environment from [`environment.yml`](.
 conda env create -f environment.yml
 conda activate rover-grid
 python create_grid.py --help
+python -m unittest discover -s tests
 ```
 
 Activate `rover-grid` again whenever you open a new terminal to work on the scripts. If the dependencies in `environment.yml` change later, update the environment with:
@@ -39,15 +40,18 @@ conda env update -f environment.yml --prune
 python create_grid.py --csv /path/to/csvfile --gridsize GRIDSIZE --ew_points EW_POINTS --ns_points NS_POINTS [--out_file /path/to/outfile] [--angle ANGLE] [--keep_corner] 
 ```
 
-- -c/--csv: path to a CSV with exactly one data row containing `Easting` and `Northing`; `Elevation` is optional and defaults to 0
-- -g/--gridsize: desired grid size in meters
-- -e/--ew_points: desired number of points in East/West direction
-- -n/--ns_points: desired number of points in North/South direction
+- -c/--csv: path to a CSV with exactly one data row containing finite `Easting` and `Northing` values in meters; `Elevation` is optional and defaults to 0
+- -g/--gridsize: desired positive grid size in meters
+- -e/--ew_points: positive number of points in East/West direction
+- -n/--ns_points: positive number of points in North/South direction
 - (optional) -a/--angle: angle with NS axis, rotated clockwise around SW corner 
 - (optional) --keep_corner: also keeps the first sw point the grid is based on in the new csv file
 - (optional) -o/--out_file: path of output file
 
+> NOTE: Input and output paths must refer to different files. The script reports empty, unreadable, or malformed input CSV files as command-line errors.
+
 > NOTE: SW corner is assumed in the script, however it will still work for other corners. Make sure to set ew_points, ns_points and angle accordingly and double check results.
+> NOTE: The script uses the coordinates as provided and does not check or convert the coordinate reference system (CRS). Use projected coordinates in meters, and keep the Rover project in the same CRS.
 
 
 ## Create grid from 4 corner points:

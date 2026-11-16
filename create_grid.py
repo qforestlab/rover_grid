@@ -29,7 +29,15 @@ def check_coordinates_csv(csv_path, parser):
     if not os.path.isfile(csv_path):
         parser.error(f"CSV file not found: {csv_path}")
 
-    df = pd.read_csv(csv_path)
+    try:
+        df = pd.read_csv(csv_path)
+    except (
+        OSError,
+        UnicodeDecodeError,
+        pd.errors.EmptyDataError,
+        pd.errors.ParserError,
+    ) as error:
+        parser.error(f"Could not read CSV file '{csv_path}': {error}")
 
     required_columns = {"Easting", "Northing"}
     missing_columns = required_columns - set(df.columns)
@@ -40,8 +48,8 @@ def check_coordinates_csv(csv_path, parser):
 
     row = df.iloc[0]
     coordinates = pd.to_numeric(row[["Easting", "Northing"]], errors="coerce")
-    if coordinates.isna().any():
-        parser.error("CSV 'Easting' and 'Northing' values must be present and numeric.")
+    if not np.isfinite(coordinates.to_numpy()).all():
+        parser.error("CSV 'Easting' and 'Northing' values must be finite numbers.")
 
     elevation = row.get("Elevation", 0)
     if pd.isna(elevation):
@@ -65,10 +73,28 @@ def main():
 
     args = parser.parse_args()
 
+    for option, value in (
+        ("--gridsize", args.gridsize),
+        ("--ew_points", args.ew_points),
+        ("--ns_points", args.ns_points),
+    ):
+        if value <= 0:
+            parser.error(f"{option} must be a positive integer.")
+
     if args.angle is None:
         args.angle = 0
 
+    output_path = args.out_file if args.out_file is not None else "grid_generated.csv"
     sw_coordinates, df_elevation = check_coordinates_csv(args.csv, parser)
+
+    try:
+        same_file = os.path.samefile(args.csv, output_path)
+    except FileNotFoundError:
+        same_file = os.path.realpath(args.csv) == os.path.realpath(output_path)
+    except OSError as error:
+        parser.error(f"Could not compare input and output paths: {error}")
+    if same_file:
+        parser.error("Output file must not be the same as the input CSV.")
 
     print(f"Laying out {args.ew_points} points in east-west direction and {args.ns_points} in north-south direction.")
     print(f"Using a gridsize of {args.gridsize} m. and angle of {args.angle} deg. (angle with n-s axis in clockwise direction around sw point)")
@@ -96,10 +122,7 @@ def main():
 
     df['Name'] = df.index
 
-    if args.out_file is not None:
-        df.to_csv(args.out_file, index=False)
-    else:
-        df.to_csv("grid_generated.csv", index=False)
+    df.to_csv(output_path, index=False)
 
 
 if __name__ == "__main__":
