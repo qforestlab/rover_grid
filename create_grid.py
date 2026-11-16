@@ -25,6 +25,34 @@ def sw_corner_to_grid(easting_northing_sw, grid_size, ew_number_of_pos, ns_numbe
     coords += easting_northing_sw
     return coords
 
+def check_coordinates_csv(csv_path, parser):
+    if not os.path.isfile(csv_path):
+        parser.error(f"CSV file not found: {csv_path}")
+
+    df = pd.read_csv(csv_path)
+
+    required_columns = {"Easting", "Northing"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        parser.error(f"CSV is missing required column(s): {', '.join(sorted(missing_columns))}")
+    if len(df) != 1:
+        parser.error(f"CSV must contain exactly one data row; found {len(df)}.")
+
+    row = df.iloc[0]
+    coordinates = pd.to_numeric(row[["Easting", "Northing"]], errors="coerce")
+    if coordinates.isna().any():
+        parser.error("CSV 'Easting' and 'Northing' values must be present and numeric.")
+
+    elevation = row.get("Elevation", 0)
+    if pd.isna(elevation):
+        elevation = 0
+    try:
+        elevation = float(elevation)
+    except (TypeError, ValueError):
+        parser.error("CSV 'Elevation' value must be numeric when provided.")
+
+    return coordinates.to_numpy(), elevation
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--csv", type=str, required=True)
@@ -37,27 +65,17 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.csv):
-        print("couldnt find csv_file, exiting")
-        os._exit(1)
-        
     if args.angle is None:
         args.angle = 0
 
+    sw_coordinates, df_elevation = check_coordinates_csv(args.csv, parser)
+
     print(f"Laying out {args.ew_points} points in east-west direction and {args.ns_points} in north-south direction.")
     print(f"Using a gridsize of {args.gridsize} m. and angle of {args.angle} deg. (angle with n-s axis in clockwise direction around sw point)")
-    
-    df = pd.read_csv(args.csv)
 
     # TODO: change to lat/long so Global CS can be used on the Rover
 
-    # get SW point info, assumes only one position
-    df_east = df[["Easting"]].values[0][0]
-    df_north = df[["Northing"]].values[0][0]
-    df_elevation = df[["Elevation"]].values[0][0]
-    
-
-    coords = sw_corner_to_grid(np.array([df_east, df_north]), args.gridsize, args.ew_points, args.ns_points, args.angle)
+    coords = sw_corner_to_grid(sw_coordinates, args.gridsize, args.ew_points, args.ns_points, args.angle)
 
     # DEBUG
     # print(coords)

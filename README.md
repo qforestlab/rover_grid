@@ -39,7 +39,7 @@ conda env update -f environment.yml --prune
 python create_grid.py --csv /path/to/csvfile --gridsize GRIDSIZE --ew_points EW_POINTS --ns_points NS_POINTS [--out_file /path/to/outfile] [--angle ANGLE] [--keep_corner] 
 ```
 
-- -c/--csv: path to exported csv file
+- -c/--csv: path to a CSV with exactly one data row containing `Easting` and `Northing`; `Elevation` is optional and defaults to 0
 - -g/--gridsize: desired grid size in meters
 - -e/--ew_points: desired number of points in East/West direction
 - -n/--ns_points: desired number of points in North/South direction
