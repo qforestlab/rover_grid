@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
 import argparse
+import logging
 import os
-# import matplotlib.pyplot as plt
 import math as m
+
+logger = logging.getLogger(__name__)
+
 
 def sw_corner_to_grid(easting_northing_sw, grid_size, ew_number_of_pos, ns_number_of_points, angle):
     # get array of points on ew and ns edges
@@ -24,6 +27,7 @@ def sw_corner_to_grid(easting_northing_sw, grid_size, ew_number_of_pos, ns_numbe
     # translate back
     coords += easting_northing_sw
     return coords
+
 
 def check_coordinates_csv(csv_path, parser):
     if not os.path.isfile(csv_path):
@@ -61,17 +65,59 @@ def check_coordinates_csv(csv_path, parser):
 
     return coordinates.to_numpy(), elevation
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--csv", type=str, required=True)
-    parser.add_argument("-g", "--gridsize", type=int, required=True)
-    parser.add_argument("-e", "--ew_points", type=int, required=True)
-    parser.add_argument("-n", "--ns_points", type=int, required=True)
-    parser.add_argument("-a", "--angle", type=float)
-    parser.add_argument("--keep_corner", action='store_true')
-    parser.add_argument("-o", "--out_file", type=str, default=None)
+    parser.add_argument(
+        "-c",
+        "--csv",
+        type=str,
+        required=True,
+        help="Input CSV with one row containing Easting and Northing in meters.",
+    )
+    parser.add_argument(
+        "-g",
+        "--gridsize",
+        type=int,
+        required=True,
+        help="Grid spacing in meters; must be a positive integer.",
+    )
+    parser.add_argument(
+        "-e",
+        "--ew_points",
+        type=int,
+        required=True,
+        help="Number of grid points in the east-west direction; must be positive.",
+    )
+    parser.add_argument(
+        "-n",
+        "--ns_points",
+        type=int,
+        required=True,
+        help="Number of grid points in the north-south direction; must be positive.",
+    )
+    parser.add_argument(
+        "-a",
+        "--angle",
+        type=float,
+        default=0,
+        help="Clockwise rotation in degrees from the north-south axis around the SW corner (default: 0).",
+    )
+    parser.add_argument(
+        "--keep_corner",
+        action="store_true",
+        help="Include the input SW corner in the generated output (omitted by default).",
+    )
+    parser.add_argument(
+        "-o",
+        "--out_file",
+        type=str,
+        default="grid_generated.csv",
+        help="Output CSV path (default: grid_generated.csv).",
+    )
 
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     for option, value in (
         ("--gridsize", args.gridsize),
@@ -81,10 +127,7 @@ def main():
         if value <= 0:
             parser.error(f"{option} must be a positive integer.")
 
-    if args.angle is None:
-        args.angle = 0
-
-    output_path = args.out_file if args.out_file is not None else "grid_generated.csv"
+    output_path = args.out_file
     sw_coordinates, df_elevation = check_coordinates_csv(args.csv, parser)
 
     try:
@@ -96,33 +139,34 @@ def main():
     if same_file:
         parser.error("Output file must not be the same as the input CSV.")
 
-    print(f"Laying out {args.ew_points} points in east-west direction and {args.ns_points} in north-south direction.")
-    print(f"Using a gridsize of {args.gridsize} m. and angle of {args.angle} deg. (angle with n-s axis in clockwise direction around sw point)")
-
-    # TODO: change to lat/long so Global CS can be used on the Rover
+    logger.info(
+        "Laying out %s points east-west and %s points north-south.",
+        args.ew_points,
+        args.ns_points,
+    )
+    logger.info(
+        "Using a grid spacing of %s m and a clockwise angle of %s degrees from the north-south axis.",
+        args.gridsize,
+        args.angle,
+    )
 
     coords = sw_corner_to_grid(sw_coordinates, args.gridsize, args.ew_points, args.ns_points, args.angle)
 
-    # DEBUG
-    # print(coords)
-    # plt.axis('equal')
-    # plt.scatter(coords[:,0], coords[:,1])
-    # plt.show()
-
-    # add dummy elevation
+    # Copy the input elevation to every generated point.
     elevation_arr = np.ones((len(coords),1)) * df_elevation
     coords_el = np.hstack((coords, elevation_arr))
 
     df = pd.DataFrame(coords_el, columns=["Easting", "Northing", "Elevation"])
     
 
-    # remove first row as this points has been recorded already
+    # The input corner has already been recorded.
     if not args.keep_corner:
         df = df.iloc[1:]
 
     df['Name'] = df.index
 
     df.to_csv(output_path, index=False)
+    logger.info("Generated grid saved to %s.", output_path)
 
 
 if __name__ == "__main__":
