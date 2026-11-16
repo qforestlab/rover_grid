@@ -2,3 +2,4 @@ test_grids/
 plot_grid_check.py
 
 __pycache__
+.venv/
