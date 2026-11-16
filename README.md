@@ -1,12 +1,37 @@
-# Emlid rover grid scripts
+# dGNSS grid creation scripts
 
-This repo contains scripts to generate a scanning grid using an Emlid Reach rover.
-Detailed instructions on the entire Emlid workflow can be found in the attached Manual or on Teams.
+This repo contains scripts to generate coordinates of a forest plot (scanning) grid, starting from a single corner coordinate (or 2, 3, 4 corners) and user-specified grid size. The output, a csv with coordinates, can be uploaded to e.g. an Emlid Reach rover to stake out positions in the field. Detailed instructions on the entire Emlid workflow can be found in the attached manual or on Teams.
 
-1. Install dependencies: Python 3 + ``` pip/conda install pandas ``` (already installed if running on fieldwork phone)
-2. Export Rover project to csv after registering 1/2/3/4 corners.
-3. Run grid generation script
-4. Import grid_generated.csv/custom_output_name.csv into Rover project
+## Installation
+
+If you do not already have the repository, clone it and enter its directory:
+
+```sh
+git clone https://github.com/qforestlab/rover_grid.git
+cd rover_grid
+```
+
+### With Conda
+
+From the repository directory, create the environment from [`environment.yml`](./environment.yml):
+
+```sh
+conda env create -f environment.yml
+conda activate rover-grid
+python create_grid.py --help
+```
+
+Activate `rover-grid` again whenever you open a new terminal to work on the scripts. If the dependencies in `environment.yml` change later, update the environment with:
+
+```sh
+conda env update -f environment.yml --prune
+```
+
+## Using the scripts
+
+1. Export the Rover project to CSV after registering 1, 2, 3, or 4 corners.
+2. Run the appropriate grid-generation script below from the activated environment.
+3. Import `grid_generated.csv` (or your chosen output filename) into the Rover project.
 
 ## Create grid from single (SW) point:
 
